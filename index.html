@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Text Twist</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <link rel="shortcut icon" href="faveicon.ico" />
+  <style>
+    html,
+    body,
+    header,
+    .view {
+      background: rgb(233, 233, 233);
+    }
+
+    .side {
+      width: 70%;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .square {
+      height: 50px;
+      width: 50px;
+      margin: 10px;
+      border-style: ridge;
+      border-width: 5px;
+      border-color: coral;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .letter {
+      height: 50px;
+      width: 50px;
+      margin: 10px;
+      text-align: center;
+    }
+
+    #game,
+    #compTimer,
+    #results,
+    #leaders {
+      display: none;
+    }
+
+    .buttons {
+      margin: 10px;
+    }
+
+    .gameA:hover {
+      cursor: pointer;
+      background: rgb(241, 238, 204);
+    }
+
+    .aHover:hover {
+      cursor: pointer;
+    }
+
+    .navbar {
+      box-shadow: 0 2px 2px -2px rgba(0, 0, 0, .2);
+
+      /* the rest of your styling */
+    }
+
+    .margins {
+      margin-top: 15px;
+    }
+  </style>
+  <!-- The core Firebase JS SDK is always required and must be listed first -->
+<script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-app.js"></script>
+
+<!-- TODO: Add SDKs for Firebase products that you want to use
+     https://firebase.google.com/docs/web/setup#available-libraries -->
+<script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-analytics.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.2.3/firebase-auth.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.2.1/dist/jquery.min.js"></script>
+
+</head>
+
+<body>
+  <nav class="navbar navbar-dark bg-primary ">
+    <a class="navbar-brand aHover" id="startOver">Text Twist</a>
+    <span class="navbar-text">
+      <button class="btn btn-secondary" id="seeLeaderBoard" onclick="login">Login</button>
+    </span>
+  </nav>
+  <div class="container margins">
+    <div class="d-flex justify-content-center">
+      <div class="side card shadow p-3 mb-5 bg-white rounded" id="start">
+        <div class="card-title">
+          <h1>Let's Get Twisty! </h1>
+          Select if you want to do competition mode and pick a difficulty setting to get started.
+        </div>
+        <div class="form-check">
+          <input type="checkbox" class="form-check-input" id="competition">
+          <label class="form-check-label" for="competition">Competition Mode</label>
+        </div>
+        <div class="row buttons">
+
+          <button class="btn btn-primary buttons" id="easy">Easy</button>
+          <button class="btn btn-primary buttons" id="med">Medium</button>
+          <button class="btn btn-primary buttons" id="hard">Hard</button>
+        </div>
+        
+      </div>
+
+      <div class="side card shadow p-3 mb-5 bg-white rounded" id="game">
+        <div class="card-title">
+          <h1>Let's Get Twisty! </h1>
+        </div>
+        <div class="card-body">
+          <div id="score">
+
+          </div>
+          <div id="compTimer">
+            Time Remaining: <span id="countdown">05:00<span>
+          </div>
+          <div id="mode">
+
+          </div>
+          <div class="row" id="boxes">
+
+          </div>
+          <div class="row" id="letters">
+
+          </div>
+          <div class="row buttons">
+            <button class="btn btn-primary buttons" onclick="checkSolution()">Enter</button>
+            <button class="btn btn-primary buttons" id="endGameButton" onclick="endGame()">End Game</button>
+          </div>
+          <div id="response">
+
+          </div>
+        </div>
+      </div>
+      <div class="side card shadow p-3 mb-5 bg-white rounded" id="results">
+        <div class="card-title">
+          <h1>Results</h1>
+        </div>
+        <div class="card-body">
+          <div class="form-group">
+            <label for="name">Enter a username to get your ranking</label>
+            <input type="text" class="form-control" id="name" placeholder="Username">
+          </div>
+          <button class="btn btn-primary" id="enterName">Enter Name</button>
+        </div>
+      </div>
+      <div class="side card shadow p-3 mb-5 bg-white rounded" id="leaders">
+        <div class="card-title">
+          <h1>Leader Board</h1>
+        </div>
+        <div class="card-body">
+          <table class="table">
+            <thead>
+              <tr>
+                <th scope="col">#</th>
+                <th scope="col">Username</th>
+                <th scope="col">Score</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody" >
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+<script>
+
+  let letterCounter = 0;
+  let dict = {};
+  let dictSquare = {};
+  let solution = [];
+  let words = [];
+  let score = 0;
+  let weight = 0;
+  let mode = "Easy";
+  let scoreMultiple = 1;
+
+  function checkSolution() {
+    $("#response").html("");
+    if (words.includes(solution.join(''))) {
+      $("#score").html("");
+      $("#response").append(`Correct!`);
+      score = parseInt(score) + (parseInt(weight) * scoreMultiple);
+      $("#score").append("Score: " + score);
+      $.ajax({
+        method: "GET",
+        url: "api.php",
+        data: { mode: mode },
+        success: data => { showRacks(data) }
+      });
+    } else {
+      $("#response").append(`Try Again!`);
+    }
+  }
+
+  function seeLeaderBoard() {
+    $.ajax({
+          method: "GET",
+          url: "api.php",
+          data: {leader: "true"},
+          success: data => { scoreBoard(data) }
+        });
+  }
+
+  function clickLetter(index) {
+    $("#letter-" + index).html('');
+    $("#letter-" + index).removeClass("gameA");
+    $("#letter-" + index)[0].style.pointerEvents = "none";
+    $("#square-" + letterCounter)[0].style.pointerEvents = "auto";
+    document.getElementById("square-" + letterCounter).classList.add("gameA");
+    document.getElementById("square-" + letterCounter).append(dict[index]);
+    dictSquare[letterCounter] = index;
+    letterCounter++;
+    solution.push(dict[index]);
+  }
+
+  function clickSquare(index) {
+    if (index == letterCounter - 1) {
+      letterCounter--;
+      $("#square-" + index)[0].style.pointerEvents = "none";
+      $("#letter-" + dictSquare[letterCounter])[0].style.pointerEvents = "auto";
+      document.getElementById("letter-" + dictSquare[letterCounter]).classList.add("gameA");
+      document.getElementById("letter-" + dictSquare[letterCounter]).append(dict[dictSquare[letterCounter]]);
+      $("#square-" + index).html('');
+      $("#square-" + index).removeClass("gameA");
+      solution.pop();
+    }
+  }
+
+  function startTimer(duration, display) {
+    let x = document.getElementById("competition").checked;
+    if (x) {
+      
+      document.getElementById("compTimer").style.display = "block";
+      document.getElementById("endGameButton").style.display = "block";
+      var start = Date.now(),
+        diff,
+        minutes,
+        seconds;
+      function timer() {
+        // get the number of seconds that have elapsed since 
+        // startTimer() was called
+        diff = duration - (((Date.now() - start) / 1000) | 0);
+
+        // does the same job as parseInt truncates the float
+        minutes = (diff / 60) | 0;
+        seconds = (diff % 60) | 0;
+
+        minutes = minutes < 10 ? "0" + minutes : minutes;
+        seconds = seconds < 10 ? "0" + seconds : seconds;
+        document.getElementById("countdown").innerHTML = minutes + ":" + seconds;
+
+        display.textContent = minutes + ":" + seconds;
+
+        if (diff <= 0) {
+          // add one second so that the count down starts at the full duration
+          // example 05:00 not 04:59
+          start = Date.now() + 1000;
+        }
+
+        if (minutes == 0 && seconds == 0) {
+          endGame();
+        }
+      };
+      // we don't want to wait a full second before the timer starts
+      timer();
+      setInterval(timer, 1000);
+    } else {
+      document.getElementById("compTimer").style.display = "none";
+      document.getElementById("endGameButton").style.display = "none";
+    }
+  }
+
+  function endGame() {
+    document.getElementById("game").style.display = "none";
+    document.getElementById("results").style.display = "block";
+  }
+
+  let scoreBoard = function (scores) {
+    document.getElementById("start").style.display = "none";
+    document.getElementById("game").style.display = "none";
+    document.getElementById("results").style.display = "none";
+    document.getElementById("leaders").style.display = "block";
+    $("#tableBody").html('');
+    scores.map(score => {
+      $("#tableBody").append(`
+              <tr>
+                <th scope="row">1</th>
+                <td>${score.user}</td>
+                <td>${score.score}</td>
+              </tr>`);
+    });
+  }
+
+  let logout = firebase.auth().signOut().then(function() {
+        // Sign-out successful.
+        }).catch(function(error) {
+        // An error happened.
+        });
+
+        let login = firebase.auth().signInWithPopup(provider).then(function(result) {
+        // This gives you a Google Access Token. You can use it to access the Google API.
+        console.log("here");
+        var token = result.credential.accessToken;
+        // The signed-in user info.
+        var user = result.user;
+        // ...
+        }).catch(function(error) {
+        // Handle Errors here.
+        var errorCode = error.code;
+        var errorMessage = error.message;
+        // The email of the user's account used.
+        var email = error.email;
+        // The firebase.auth.AuthCredential type that was used.
+        var credential = error.credential;
+        // ...
+        });
+
+  let showRacks = function (racks) {
+    letterCounter = 0;
+    dict = {};
+    dictSquare = {};
+    solution = [];
+    words = [];
+    weight = 0;
+    $("#boxes").html('');
+    $("#letters").html('');
+    racks.map(rack => {
+      weight = rack.weight;
+      words = rack.words.split('@@');
+      rack.rack.split('').forEach(function (item, index) {
+        dict[index] = item;
+        $("#boxes").append(`<a class="square" onclick="clickSquare(${index})" id="square-${index}"></a>`);
+        $("#letters").append(`<a class="letter gameA" onclick="clickLetter(${index})" id="letter-${index}">${item}</a>`);
+      });
+    })
+
+  }
+
+  $(document).ready(function () {
+    var firebaseConfig = {
+          apiKey: "AIzaSyBHhkE7qul_s-gTy9ZxDFl-5zjlEC-1ue8",
+          authDomain: "reddit-7127a.firebaseapp.com",
+          databaseURL: "https://reddit-7127a.firebaseio.com",
+          projectId: "reddit-7127a",
+          storageBucket: "reddit-7127a.appspot.com",
+          messagingSenderId: "75733530892",
+          appId: "1:75733530892:web:23539654a22c40834f7129",
+          measurementId: "G-MJL46YR25L"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        firebase.analytics();
+
+        var user = firebase.auth().currentUser;
+        var name, email, photoUrl, uid, emailVerified;
+        var provider = new firebase.auth.GoogleAuthProvider();
+        if (user != null) {
+            name = user.displayName;
+            email = user.email;
+            photoUrl = user.photoURL;
+            emailVerified = user.emailVerified;
+            uid = user.uid;  // The user's ID, unique to the Firebase project. Do NOT use
+                            // this value to authenticate with your backend server, if
+                            // you have one. Use User.getToken() instead.
+        }
+    document.getElementById("game").style.display = "none";
+    document.getElementById("leaders").style.display = "none";
+    document.getElementById("start").style.display = "block";
+
+    $("#easy").on("click", function () {
+      let fiveMinutes = 60 * 5;
+      let display = $('countdown');
+      startTimer(fiveMinutes, display);
+      mode = "Easy";
+      $("#mode").html("");
+      document.getElementById("game").style.display = "block";
+      document.getElementById("start").style.display = "none";
+      $("#mode").append("Mode: " + mode);
+      $.ajax({
+        method: "GET",
+        url: "api.php",
+        data: { mode: "Easy" },
+        success: data => { showRacks(data) }
+      });
+    });
+    $("#med").on("click", function () {
+      let fiveMinutes = 60 * 5;
+      let display = $('#countdown');
+      startTimer(fiveMinutes, display);
+      mode = "Medium";
+      $("#mode").html("");
+      document.getElementById("game").style.display = "block";
+      document.getElementById("start").style.display = "none";
+      $("#mode").append("Mode: " + mode);
+      $.ajax({
+        method: "GET",
+        url: "api.php",
+        data: { mode: "Medium" },
+        success: data => { showRacks(data) }
+      });
+    });
+    $("#hard").on("click", function () {
+      let fiveMinutes = 60 * 5;
+      let display = $('#countdown');
+      startTimer(fiveMinutes, display);
+      mode = "Hard";
+      $("#mode").html("");
+      document.getElementById("game").style.display = "block";
+      document.getElementById("start").style.display = "none";
+      $("#mode").append("Mode: " + mode);
+      $.ajax({
+        method: "GET",
+        url: "api.php",
+        data: { mode: "Hard" },
+        success: data => { showRacks(data); }
+      });
+    });
+    $("#score").append("Score: " + score);
+    $("#grabmore").on("click", function () {
+      $.ajax({
+        method: "GET",
+        url: "api.php",
+        success: data => { showRacks(data) }
+      });
+    });
+    $("#enterName").on("click", function () {
+      let x = document.getElementById("name").value;
+      if (x) {
+        $.ajax({
+          method: "POST",
+          url: "api.php",
+          data: {date_submitted: Date.now(), user: x, score: score},
+          success: data => { scoreBoard(data) }
+        });
+      }
+      
+  });
+    $("#startOver").on("click", function () {
+      document.getElementById("game").style.display = "none";
+      document.getElementById("leaders").style.display = "none";
+      document.getElementById("results").style.display = "none";
+      document.getElementById("start").style.display = "block";
+    });
+  });
+</script>
+
+</html>
